@@ -1,13 +1,46 @@
 import requests
-from telegram import Bot
 import asyncio
+import configparser
+from telegram import Bot
+import sys
+import os
 
-# Настройки
-STEAM_API_KEY = '2F3CA6DB2EA1802F6C2B36BC903D5C13'
-TELEGRAM_BOT_TOKEN = '7899819039:AAHodnXx0NI_o520rVU6rBzhfKKh03C3494'  # Токен вашего бота
-GROUP_CHAT_ID = '-1002253163041'  # Chat ID вашей группы
-STEAM_IDS = ['76561199350610044', '76561199044928778', '76561198977674430']  # Список Steam ID друзей (замените на реальные)
-CHECK_INTERVAL = 300  # Проверка каждые 5 минут
+
+def create_config_example():
+    config = configparser.ConfigParser()
+    config['Steam'] = {
+        'api_key': 'ваш_Steam_API_ключ',
+        'steam_ids': '76561199350610044,76561199044928778'
+    }
+    config['Telegram'] = {
+        'bot_token': 'ваш_токен_бота',
+        'group_chat_id': '-1002253163041'
+    }
+    config['Settings'] = {
+        'check_interval': '300'
+    }
+    config['Message'] = {
+        'text': '🚛 ETS2 запущен! Присоединяйтесь: [Radio7](https://radio7.ru/?region=msk)'
+    }
+
+    with open('config.txt', 'w') as configfile:
+        config.write(configfile)
+    print("Создан config.txt. Заполните его своими данными.")
+    sys.exit()
+
+
+if not os.path.exists('config.txt'):
+    create_config_example()
+
+config = configparser.ConfigParser()
+config.read('config.txt')
+
+STEAM_API_KEY = config['Steam']['api_key']
+TELEGRAM_BOT_TOKEN = config['Telegram']['bot_token']
+GROUP_CHAT_ID = config['Telegram']['group_chat_id']
+STEAM_IDS = config['Steam']['steam_ids'].split(',')
+CHECK_INTERVAL = int(config['Settings']['check_interval'])
+MESSAGE_TEXT = config['Message']['text']
 
 
 def get_friends_status():
@@ -17,36 +50,30 @@ def get_friends_status():
         'steamids': ','.join(STEAM_IDS)
     }
     response = requests.get(url, params=params).json()
-    print(f"Response from Steam API: {response}")
     return response['response']['players']
 
 
 async def send_message():
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
-    await bot.send_message(chat_id=GROUP_CHAT_ID,
-                           text="🚛 Эй, братва, подтягивайся — ETS2 врубил! Каблук на газ, фуры вразвал, а чтоб скучно не было — лови волну: [Radio7](https://radio7.ru/?region=msk)")
-    print("Message sent to Telegram group.")
+    await bot.send_message(
+        chat_id=GROUP_CHAT_ID,
+        text=MESSAGE_TEXT,
+        parse_mode='Markdown'
+    )
 
 
 async def main():
-    global_status = False  # Глобальное состояние: играет ли кто-то в ETS2
-
+    global_status = False
     while True:
         players = get_friends_status()
-        print(f"Players status: {players}")
-
-        # Проверяем, играет ли кто-то в ETS2 прямо сейчас
         current_status = any(player.get('gameid') == '227300' for player in players)
 
-        # Если сейчас кто-то играет, а раньше никто не играл — отправляем сообщение
         if current_status and not global_status:
-            print("Someone started playing ETS2. Sending message...")
             await send_message()
+            global_status = True
+        elif not current_status:
+            global_status = False
 
-        # Обновляем глобальное состояние
-        global_status = current_status
-
-        # Ждём перед следующей проверкой
         await asyncio.sleep(CHECK_INTERVAL)
 
 
