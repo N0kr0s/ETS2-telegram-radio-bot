@@ -24,7 +24,7 @@ def get_friends_status():
 async def send_message():
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
     await bot.send_message(chat_id=GROUP_CHAT_ID,
-                           text="Эй, братва, подтягивайся — ETS2 врубил! Каблук на газ, фуры вразвал, а чтоб скучно не было — лови волну: https://radio7.ru/?region=msk")
+                           text="🚛 Эй, братва, подтягивайся — ETS2 врубил! Каблук на газ, фуры вразвал, а чтоб скучно не было — лови волну: [Radio7](https://radio7.ru/?region=msk)")
     print("Message sent to Telegram group.")
 
 
